@@ -12,6 +12,11 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class WalletController extends Controller
 {
+    /**
+     * List wallets.
+     *
+     * Returns a paginated list of all wallets belonging to the authenticated user.
+     */
     public function index(Request $request): AnonymousResourceCollection
     {
         $wallets = Wallet::latest()->paginate(15);
@@ -19,6 +24,13 @@ class WalletController extends Controller
         return WalletResource::collection($wallets);
     }
 
+    /**
+     * Create a wallet.
+     *
+     * Creates a new wallet for the authenticated user.
+     *
+     * @response 201 WalletResource
+     */
     public function store(StoreWalletRequest $request): WalletResource
     {
         $wallet = Wallet::create([
@@ -30,11 +42,21 @@ class WalletController extends Controller
         return new WalletResource($wallet);
     }
 
+    /**
+     * Get a wallet.
+     *
+     * Returns details of a specific wallet. Returns 404 if it does not belong to the authenticated user.
+     */
     public function show(Wallet $wallet): WalletResource
     {
         return new WalletResource($wallet);
     }
 
+    /**
+     * Update a wallet.
+     *
+     * Partially updates wallet fields. All fields are optional (PATCH semantics).
+     */
     public function update(UpdateWalletRequest $request, Wallet $wallet): WalletResource
     {
         $wallet->update($request->validated());
@@ -42,6 +64,13 @@ class WalletController extends Controller
         return new WalletResource($wallet);
     }
 
+    /**
+     * Delete a wallet.
+     *
+     * Permanently deletes a wallet. Returns 404 if it does not belong to the authenticated user.
+     *
+     * @response 204
+     */
     public function destroy(Wallet $wallet): JsonResponse
     {
         $wallet->delete();

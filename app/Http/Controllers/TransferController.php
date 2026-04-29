@@ -13,6 +13,12 @@ use Illuminate\Support\Facades\DB;
 
 class TransferController extends Controller
 {
+    /**
+     * List transfers.
+     *
+     * Returns a paginated list of all fund transfers belonging to the authenticated user,
+     * with source and destination wallet details included.
+     */
     public function index(Request $request): AnonymousResourceCollection
     {
         $transfers = Transfer::with(['fromWallet', 'toWallet'])
@@ -22,6 +28,21 @@ class TransferController extends Controller
         return TransferResource::collection($transfers);
     }
 
+    /**
+     * Create a transfer.
+     *
+     * Atomically transfers funds between two wallets owned by the authenticated user.
+     *
+     * **Balance rules:**
+     * - `from_wallet` is debited by `amount + fee`.
+     * - `to_wallet` is credited by `amount` only (fee is not passed on).
+     * - Both wallet updates and the transfer record creation are wrapped in a `DB::transaction()`.
+     *
+     * Returns 422 if `from_wallet` does not have sufficient balance to cover `amount + fee`.
+     *
+     * @response 201 TransferResource
+     * @response 422 {"message": "Insufficient balance.", "errors": {"from_wallet_id": ["string"]}}
+     */
     public function store(StoreTransferRequest $request): TransferResource|JsonResponse
     {
         $fromWallet = Wallet::withoutGlobalScopes()
@@ -76,6 +97,12 @@ class TransferController extends Controller
         return new TransferResource($transfer);
     }
 
+    /**
+     * Get a transfer.
+     *
+     * Returns a specific transfer with source and destination wallet details.
+     * Returns 404 if it does not belong to the authenticated user.
+     */
     public function show(Transfer $transfer): TransferResource
     {
         $transfer->load(['fromWallet', 'toWallet']);
@@ -83,6 +110,13 @@ class TransferController extends Controller
         return new TransferResource($transfer);
     }
 
+    /**
+     * Delete a transfer.
+     *
+     * Permanently deletes a transfer record. Note: wallet balances are NOT automatically reverted.
+     *
+     * @response 204
+     */
     public function destroy(Transfer $transfer): JsonResponse
     {
         $transfer->delete();

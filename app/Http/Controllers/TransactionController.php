@@ -15,6 +15,12 @@ use Illuminate\Support\Facades\Storage;
 
 class TransactionController extends Controller
 {
+    /**
+     * List transactions.
+     *
+     * Returns a paginated list of all transactions belonging to the authenticated user,
+     * with wallet and category (including transaction type) included.
+     */
     public function index(Request $request): AnonymousResourceCollection
     {
         $transactions = Transaction::with(['wallet', 'transactionCategory.transactionType'])
@@ -24,6 +30,23 @@ class TransactionController extends Controller
         return TransactionResource::collection($transactions);
     }
 
+    /**
+     * Record a transaction.
+     *
+     * Creates a new financial transaction and atomically updates the associated wallet balance.
+     *
+     * **Balance logic:**
+     * - If the transaction type name is `income` → wallet balance is **increased** by `amount`.
+     * - Any other type name (e.g. `outcome`, `saving`) → wallet balance is **decreased** by `amount`.
+     *
+     * The optional `photo` field accepts an image file (max 2MB) stored under `storage/transactions/`.
+     * The response includes a `photo_url` pointing to the public URL of the uploaded image.
+     *
+     * Both `Transaction::create()` and `wallet->update()` are wrapped in a `DB::transaction()`
+     * to guarantee atomicity. If either step fails, both are rolled back.
+     *
+     * @response 201 TransactionResource
+     */
     public function store(StoreTransactionRequest $request): TransactionResource
     {
         $photoPath = null;
@@ -74,6 +97,12 @@ class TransactionController extends Controller
         return new TransactionResource($transaction);
     }
 
+    /**
+     * Get a transaction.
+     *
+     * Returns a specific transaction with wallet and category details.
+     * Returns 404 if it does not belong to the authenticated user.
+     */
     public function show(Transaction $transaction): TransactionResource
     {
         $transaction->load(['wallet', 'transactionCategory.transactionType']);
@@ -81,6 +110,14 @@ class TransactionController extends Controller
         return new TransactionResource($transaction);
     }
 
+    /**
+     * Delete a transaction.
+     *
+     * Permanently deletes a transaction record. The associated photo file (if any) is also deleted
+     * from storage. Note: wallet balance is NOT automatically reverted on deletion.
+     *
+     * @response 204
+     */
     public function destroy(Transaction $transaction): JsonResponse
     {
         if ($transaction->photo_path) {

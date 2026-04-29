@@ -13,7 +13,13 @@ use Illuminate\Support\Facades\Hash;
 class AuthController extends Controller
 {
     /**
-     * Register a new user and return a Sanctum token.
+     * Register a new user.
+     *
+     * Creates a new user account and returns an API token for immediate use.
+     *
+     * @unauthenticated
+     *
+     * @response 201 {"token": "string", "user": {"id": 1, "name": "string", "email": "string"}}
      */
     public function register(RegisterRequest $request): JsonResponse
     {
@@ -32,7 +38,14 @@ class AuthController extends Controller
     }
 
     /**
-     * Authenticate a user and return a Sanctum token.
+     * Login.
+     *
+     * Authenticates the user with email and password and returns an API token.
+     *
+     * @unauthenticated
+     *
+     * @response {"token": "string", "user": {"id": 1, "name": "string", "email": "string"}}
+     * @response 422 {"message": "The provided credentials are incorrect."}
      */
     public function login(LoginRequest $request): JsonResponse
     {
@@ -53,7 +66,11 @@ class AuthController extends Controller
     }
 
     /**
-     * Revoke the current user's token.
+     * Logout.
+     *
+     * Revokes the current Bearer token. Subsequent requests with this token will return 401.
+     *
+     * @response 200 {"message": "Successfully logged out."}
      */
     public function logout(Request $request): JsonResponse
     {
