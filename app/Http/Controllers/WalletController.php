@@ -67,7 +67,8 @@ class WalletController extends Controller
     /**
      * Delete a wallet.
      *
-     * Permanently deletes a wallet. Returns 404 if it does not belong to the authenticated user.
+     * Soft-deletes a wallet. The record is retained in the database but hidden from all queries.
+     * Returns 404 if it does not belong to the authenticated user.
      *
      * @response 204
      */

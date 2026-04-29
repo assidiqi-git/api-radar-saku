@@ -113,13 +113,37 @@ class TransferController extends Controller
     /**
      * Delete a transfer.
      *
-     * Permanently deletes a transfer record. Note: wallet balances are NOT automatically reverted.
+     * Soft-deletes a transfer and atomically reverses the wallet balance mutations:
+     * - `from_wallet` is credited back by `amount + fee`
+     * - `to_wallet` is debited by `amount`
+     *
+     * Both wallet updates and the soft delete are wrapped in a `DB::transaction()`.
      *
      * @response 204
      */
     public function destroy(Transfer $transfer): JsonResponse
     {
-        $transfer->delete();
+        DB::transaction(function () use ($transfer) {
+            /** @var Wallet $fromWallet */
+            $fromWallet = Wallet::withoutGlobalScopes()
+                ->where('id', $transfer->from_wallet_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            /** @var Wallet $toWallet */
+            $toWallet = Wallet::withoutGlobalScopes()
+                ->where('id', $transfer->to_wallet_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $amount = (float) $transfer->amount;
+            $fee = (float) $transfer->fee;
+
+            $fromWallet->increment('balance', $amount + $fee);
+            $toWallet->decrement('balance', $amount);
+
+            $transfer->delete();
+        });
 
         return response()->json(null, 204);
     }

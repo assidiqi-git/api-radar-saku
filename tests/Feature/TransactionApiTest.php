@@ -269,9 +269,11 @@ it('returns 404 for a transaction belonging to another user', function () {
 
 // ─── Destroy ─────────────────────────────────────────────────────────────────
 
-it('deletes a transaction', function () {
+it('soft deletes a transaction and reverses wallet balance for addition (income)', function () {
     ['user' => $user, 'category' => $category, 'wallet' => $wallet] = makeUserWithCategory('income');
     Sanctum::actingAs($user);
+
+    $initialBalance = (float) $wallet->balance;
 
     $response = $this->postJson('/api/transactions', [
         'wallet_id' => $wallet->id,
@@ -282,7 +284,67 @@ it('deletes a transaction', function () {
 
     $id = $response->json('data.id');
 
+    // After store, balance should be increased
+    expect((float) $wallet->fresh()->balance)->toBe($initialBalance + 100000);
+
     $this->deleteJson("/api/transactions/{$id}")->assertStatus(204);
 
-    $this->assertDatabaseMissing('transactions', ['id' => $id]);
+    // After soft delete, balance must be reverted
+    expect((float) $wallet->fresh()->balance)->toBe($initialBalance);
+    $this->assertSoftDeleted('transactions', ['id' => $id]);
+});
+
+it('soft deletes a transaction and reverses wallet balance for deduction (outcome)', function () {
+    ['user' => $user, 'category' => $category, 'wallet' => $wallet] = makeUserWithCategory('outcome');
+    Sanctum::actingAs($user);
+
+    $initialBalance = (float) $wallet->balance;
+
+    $response = $this->postJson('/api/transactions', [
+        'wallet_id' => $wallet->id,
+        'transaction_category_id' => $category->id,
+        'amount' => 200000,
+        'name' => 'To Delete Outcome',
+    ])->assertStatus(201);
+
+    $id = $response->json('data.id');
+
+    // After store, balance should be decreased
+    expect((float) $wallet->fresh()->balance)->toBe($initialBalance - 200000);
+
+    $this->deleteJson("/api/transactions/{$id}")->assertStatus(204);
+
+    // After soft delete, balance must be reverted
+    expect((float) $wallet->fresh()->balance)->toBe($initialBalance);
+    $this->assertSoftDeleted('transactions', ['id' => $id]);
+});
+
+it('moves photo to trash folder when soft deleting a transaction with photo', function () {
+    Storage::fake('public');
+
+    ['user' => $user, 'category' => $category, 'wallet' => $wallet] = makeUserWithCategory('income');
+    Sanctum::actingAs($user);
+
+    $file = UploadedFile::fake()->image('receipt.jpg');
+
+    $response = $this->postJson('/api/transactions', [
+        'wallet_id' => $wallet->id,
+        'transaction_category_id' => $category->id,
+        'amount' => 50000,
+        'name' => 'With Photo To Delete',
+        'photo' => $file,
+    ])->assertStatus(201);
+
+    $id = $response->json('data.id');
+    $originalPath = 'transactions/'.$file->hashName();
+
+    $this->deleteJson("/api/transactions/{$id}")->assertStatus(204);
+
+    // Photo must be moved to trash folder
+    Storage::disk('public')->assertMissing($originalPath);
+    Storage::disk('public')->assertExists('transactions/trash/'.$file->hashName());
+
+    // DB photo_path must reflect the new location
+    $this->assertSoftDeleted('transactions', ['id' => $id]);
+    $this->assertDatabaseHas('transactions', ['id' => $id, 'photo_path' => 'transactions/trash/'.$file->hashName()]);
 });

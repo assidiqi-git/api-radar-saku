@@ -116,18 +116,49 @@ class TransactionController extends Controller
     /**
      * Delete a transaction.
      *
-     * Permanently deletes a transaction record. The associated photo file (if any) is also deleted
-     * from storage. Note: wallet balance is NOT automatically reverted on deletion.
+     * Soft-deletes a transaction and atomically reverses the associated wallet balance mutation.
+     * If the transaction has a photo, the file is moved to `transactions/trash/` and the
+     * `photo_path` column is updated to reflect the new location before soft deletion.
+     *
+     * **Balance reversal logic:**
+     * - `addition` transaction → wallet balance is **decreased** by `amount`
+     * - `deduction` transaction → wallet balance is **increased** by `amount`
+     * - `neutral` transaction → no balance change
      *
      * @response 204
      */
     public function destroy(Transaction $transaction): JsonResponse
     {
-        if ($transaction->photo_path) {
-            Storage::disk('public')->delete($transaction->photo_path);
-        }
+        DB::transaction(function () use ($transaction) {
+            $transaction->load(['wallet', 'transactionCategory.transactionType']);
 
-        $transaction->delete();
+            /** @var Wallet $wallet */
+            $wallet = Wallet::withoutGlobalScopes()
+                ->where('id', $transaction->wallet_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $action = $transaction->transactionCategory?->transactionType?->action;
+            $amount = (float) $transaction->amount;
+
+            $newBalance = match ($action) {
+                TransactionAction::Addition => $wallet->balance - $amount,
+                TransactionAction::Deduction => $wallet->balance + $amount,
+                default => $wallet->balance,
+            };
+
+            $wallet->update(['balance' => $newBalance]);
+
+            if ($transaction->photo_path) {
+                $filename = basename($transaction->photo_path);
+                $trashedPath = 'transactions/trash/'.$filename;
+                Storage::disk('public')->move($transaction->photo_path, $trashedPath);
+                $transaction->photo_path = $trashedPath;
+            }
+
+            $transaction->save();
+            $transaction->delete();
+        });
 
         return response()->json(null, 204);
     }

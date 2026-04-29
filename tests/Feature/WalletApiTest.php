@@ -100,7 +100,7 @@ it('deletes a wallet', function () {
 
     $this->deleteJson("/api/wallets/{$wallet->id}")->assertStatus(204);
 
-    $this->assertDatabaseMissing('wallets', ['id' => $wallet->id]);
+    $this->assertSoftDeleted('wallets', ['id' => $wallet->id]);
 });
 
 it('returns 404 when deleting a wallet belonging to another user', function () {

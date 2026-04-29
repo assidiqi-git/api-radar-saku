@@ -229,7 +229,7 @@ it('returns 404 for a transfer belonging to another user', function () {
 
 // ─── Destroy ─────────────────────────────────────────────────────────────────
 
-it('deletes a transfer', function () {
+it('soft deletes a transfer and reverses both wallet balances', function () {
     ['user' => $user, 'from' => $from, 'to' => $to] = makeUserWithWallets(1000000, 0);
     Sanctum::actingAs($user);
 
@@ -242,7 +242,40 @@ it('deletes a transfer', function () {
 
     $id = $response->json('data.id');
 
+    // After transfer: from 900000, to 100000
+    expect((float) $from->fresh()->balance)->toBe(900000.0);
+    expect((float) $to->fresh()->balance)->toBe(100000.0);
+
     $this->deleteJson("/api/transfers/{$id}")->assertStatus(204);
 
-    $this->assertDatabaseMissing('transfers', ['id' => $id]);
+    // After soft delete: balances must be fully reversed
+    expect((float) $from->fresh()->balance)->toBe(1000000.0);
+    expect((float) $to->fresh()->balance)->toBe(0.0);
+    $this->assertSoftDeleted('transfers', ['id' => $id]);
+});
+
+it('soft deletes a transfer with fee and reverses both wallet balances', function () {
+    ['user' => $user, 'from' => $from, 'to' => $to] = makeUserWithWallets(1000000, 0);
+    Sanctum::actingAs($user);
+
+    $response = $this->postJson('/api/transfers', [
+        'from_wallet_id' => $from->id,
+        'to_wallet_id' => $to->id,
+        'amount' => 200000,
+        'fee' => 5000,
+        'transfer_date' => '2026-04-29',
+    ])->assertStatus(201);
+
+    $id = $response->json('data.id');
+
+    // After transfer: from 1000000 - 205000 = 795000, to 200000
+    expect((float) $from->fresh()->balance)->toBe(795000.0);
+    expect((float) $to->fresh()->balance)->toBe(200000.0);
+
+    $this->deleteJson("/api/transfers/{$id}")->assertStatus(204);
+
+    // After soft delete: balances must be fully reversed
+    expect((float) $from->fresh()->balance)->toBe(1000000.0);
+    expect((float) $to->fresh()->balance)->toBe(0.0);
+    $this->assertSoftDeleted('transfers', ['id' => $id]);
 });
