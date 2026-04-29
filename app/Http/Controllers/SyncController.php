@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Enums\TransactionAction;
 use App\Http\Requests\SyncTransactionRequest;
+use App\Http\Resources\TransactionResource;
 use App\Models\Transaction;
 use App\Models\TransactionCategory;
 use App\Models\Wallet;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
 class SyncController extends Controller
@@ -142,6 +145,40 @@ class SyncController extends Controller
             'synced' => $synced,
             'skipped' => $skipped,
         ]);
+    }
+
+    /**
+     * Pull delta updates for the mobile client.
+     *
+     * Returns all transactions belonging to the authenticated user, including
+     * soft-deleted records (tombstones), so the mobile client can mirror the
+     * server state and remove locally deleted records.
+     *
+     * Pass the optional `last_synced_at` query parameter (ISO 8601 timestamp) to
+     * perform a **delta sync** — only records with `updated_at >= last_synced_at`
+     * are returned. Omit the parameter for an **initial full sync**.
+     *
+     * Results are ordered by `updated_at` ascending so the client can safely
+     * advance its `last_synced_at` cursor to the timestamp of the last record.
+     *
+     * @queryParam last_synced_at string Optional ISO 8601 timestamp. Only records updated at or after this time are returned. Example: 2026-04-29T10:00:00Z
+     *
+     * @response 200 TransactionResource[]
+     * @response 401 Unauthenticated
+     */
+    public function pullTransactions(Request $request): AnonymousResourceCollection
+    {
+        $query = Transaction::withoutGlobalScopes()
+            ->withTrashed()
+            ->where('user_id', $request->user()->id)
+            ->with(['wallet', 'transactionCategory.transactionType'])
+            ->orderBy('updated_at');
+
+        if ($request->filled('last_synced_at')) {
+            $query->where('updated_at', '>=', $request->query('last_synced_at'));
+        }
+
+        return TransactionResource::collection($query->get());
     }
 
     /**

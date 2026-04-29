@@ -428,3 +428,153 @@ it('handles a mixed batch of new and already-synced transactions correctly', fun
     // Only the new transaction's amount should be added
     expect((float) $wallet->fresh()->balance)->toBe($balanceAfterFirst + 50_000);
 });
+
+// ─── Pull Sync ────────────────────────────────────────────────────────────────
+
+it('requires authentication for pull sync endpoint', function () {
+    $this->getJson('/api/sync/transactions/pull')->assertStatus(401);
+});
+
+it('initial pull sync (no last_synced_at) returns all transactions including soft-deleted tombstones', function () {
+    ['user' => $user, 'wallet' => $wallet, 'category' => $category] = makeSyncUser('income');
+    Sanctum::actingAs($user);
+
+    $activeUlid = newUlid();
+    $deletedUlid = newUlid();
+
+    // Push an active transaction
+    $this->postJson('/api/sync/transactions', [
+        'transactions' => [[
+            'id' => $activeUlid,
+            'wallet_id' => $wallet->id,
+            'transaction_category_id' => $category->id,
+            'amount' => 100_000,
+            'name' => 'Active',
+            'note' => null,
+            'created_at' => now()->toIso8601String(),
+            'deleted_at' => null,
+        ]],
+    ])->assertOk();
+
+    // Push and soft-delete another transaction
+    $this->postJson('/api/sync/transactions', [
+        'transactions' => [[
+            'id' => $deletedUlid,
+            'wallet_id' => $wallet->id,
+            'transaction_category_id' => $category->id,
+            'amount' => 50_000,
+            'name' => 'Deleted',
+            'note' => null,
+            'created_at' => now()->toIso8601String(),
+            'deleted_at' => now()->toIso8601String(),
+        ]],
+    ])->assertOk();
+
+    $response = $this->getJson('/api/sync/transactions/pull')->assertOk();
+
+    $ids = collect($response->json('data'))->pluck('id');
+
+    expect($ids)->toContain($activeUlid)
+        ->toContain($deletedUlid);
+
+    // Tombstone must have deleted_at populated
+    $tombstone = collect($response->json('data'))->firstWhere('id', $deletedUlid);
+    expect($tombstone['deleted_at'])->not->toBeNull();
+});
+
+it('delta pull sync returns only records updated at or after last_synced_at', function () {
+    ['user' => $user, 'wallet' => $wallet, 'category' => $category] = makeSyncUser('income');
+    Sanctum::actingAs($user);
+
+    $oldUlid = newUlid();
+    $newUlid = newUlid();
+
+    // Freeze time at T+0, push "old" transaction
+    $this->travelTo(now()->startOfSecond());
+
+    $this->postJson('/api/sync/transactions', [
+        'transactions' => [[
+            'id' => $oldUlid,
+            'wallet_id' => $wallet->id,
+            'transaction_category_id' => $category->id,
+            'amount' => 100_000,
+            'name' => 'Old Transaction',
+            'note' => null,
+            'created_at' => now()->toIso8601String(),
+            'deleted_at' => null,
+        ]],
+    ])->assertOk();
+
+    // Advance to T+5s, set cursor as UTC datetime string
+    $this->travel(5)->seconds();
+    $syncCursor = now()->utc()->toDateTimeString();
+
+    // Advance to T+10s and push "new" transaction
+    $this->travel(5)->seconds();
+
+    $this->postJson('/api/sync/transactions', [
+        'transactions' => [[
+            'id' => $newUlid,
+            'wallet_id' => $wallet->id,
+            'transaction_category_id' => $category->id,
+            'amount' => 200_000,
+            'name' => 'New Transaction',
+            'note' => null,
+            'created_at' => now()->toIso8601String(),
+            'deleted_at' => null,
+        ]],
+    ])->assertOk();
+
+    // Delta pull: should only return the new transaction
+    $response = $this->getJson("/api/sync/transactions/pull?last_synced_at={$syncCursor}")->assertOk();
+
+    $ids = collect($response->json('data'))->pluck('id');
+
+    expect($ids)->toContain($newUlid)
+        ->not->toContain($oldUlid);
+});
+
+it('pull sync only returns transactions belonging to the authenticated user', function () {
+    ['user' => $userA, 'wallet' => $walletA, 'category' => $categoryA] = makeSyncUser('income');
+    ['user' => $userB, 'wallet' => $walletB, 'category' => $categoryB] = makeSyncUser('income');
+
+    // UserA pushes a transaction
+    Sanctum::actingAs($userA);
+    $ulidA = newUlid();
+    $this->postJson('/api/sync/transactions', [
+        'transactions' => [[
+            'id' => $ulidA,
+            'wallet_id' => $walletA->id,
+            'transaction_category_id' => $categoryA->id,
+            'amount' => 100_000,
+            'name' => 'UserA Tx',
+            'note' => null,
+            'created_at' => now()->toIso8601String(),
+            'deleted_at' => null,
+        ]],
+    ])->assertOk();
+
+    // UserB pushes a transaction
+    Sanctum::actingAs($userB);
+    $ulidB = newUlid();
+    $this->postJson('/api/sync/transactions', [
+        'transactions' => [[
+            'id' => $ulidB,
+            'wallet_id' => $walletB->id,
+            'transaction_category_id' => $categoryB->id,
+            'amount' => 200_000,
+            'name' => 'UserB Tx',
+            'note' => null,
+            'created_at' => now()->toIso8601String(),
+            'deleted_at' => null,
+        ]],
+    ])->assertOk();
+
+    // UserA pulls — must only see their own transaction
+    Sanctum::actingAs($userA);
+    $response = $this->getJson('/api/sync/transactions/pull')->assertOk();
+    $ids = collect($response->json('data'))->pluck('id');
+
+    expect($ids)->toContain($ulidA)
+        ->not->toContain($ulidB);
+});

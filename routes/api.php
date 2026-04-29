@@ -28,4 +28,5 @@ Route::middleware('auth:sanctum')->group(function () {
         ->only(['index', 'store', 'show', 'destroy']);
 
     Route::post('/sync/transactions', [SyncController::class, 'transactions']);
+    Route::get('/sync/transactions/pull', [SyncController::class, 'pullTransactions']);
 });
