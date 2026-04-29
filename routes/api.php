@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\SyncController;
 use App\Http\Controllers\TransactionCategoryController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\TransactionTypeController;
@@ -25,4 +26,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('transfers', TransferController::class)
         ->only(['index', 'store', 'show', 'destroy']);
+
+    Route::post('/sync/transactions', [SyncController::class, 'transactions']);
 });
