@@ -9,10 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('transfers', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->unsignedBigInteger('from_wallet_id');
-            $table->unsignedBigInteger('to_wallet_id');
+            $table->ulid('id')->primary();
+            $table->foreignUlid('user_id')->constrained()->cascadeOnDelete();
+            $table->char('from_wallet_id', 26);
+            $table->char('to_wallet_id', 26);
             $table->decimal('amount', 15, 2);
             $table->date('transfer_date');
             $table->decimal('fee', 15, 2)->default(0);

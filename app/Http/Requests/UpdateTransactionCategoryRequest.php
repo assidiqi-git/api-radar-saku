@@ -21,7 +21,7 @@ class UpdateTransactionCategoryRequest extends FormRequest
         return [
             'transaction_type_id' => [
                 'sometimes',
-                'integer',
+                'string',
                 Rule::exists('transaction_types', 'id')->where('user_id', $this->user()->id),
             ],
             'name' => ['sometimes', 'string', 'max:255'],

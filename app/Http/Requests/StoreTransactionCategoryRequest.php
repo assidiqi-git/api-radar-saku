@@ -21,7 +21,7 @@ class StoreTransactionCategoryRequest extends FormRequest
         return [
             'transaction_type_id' => [
                 'required',
-                'integer',
+                'string',
                 Rule::exists('transaction_types', 'id')->where('user_id', $this->user()->id),
             ],
             'name' => ['required', 'string', 'max:255'],

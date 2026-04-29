@@ -21,12 +21,12 @@ class StoreTransactionRequest extends FormRequest
         return [
             'wallet_id' => [
                 'required',
-                'integer',
+                'string',
                 Rule::exists('wallets', 'id')->where('user_id', $this->user()->id),
             ],
             'transaction_category_id' => [
                 'required',
-                'integer',
+                'string',
                 Rule::exists('transaction_categories', 'id')->where('user_id', $this->user()->id),
             ],
             'amount' => ['required', 'numeric', 'min:0.01'],

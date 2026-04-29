@@ -21,12 +21,12 @@ class StoreTransferRequest extends FormRequest
         return [
             'from_wallet_id' => [
                 'required',
-                'integer',
+                'string',
                 Rule::exists('wallets', 'id')->where('user_id', $this->user()->id),
             ],
             'to_wallet_id' => [
                 'required',
-                'integer',
+                'string',
                 'different:from_wallet_id',
                 Rule::exists('wallets', 'id')->where('user_id', $this->user()->id),
             ],
