@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\UserScope;
 use Database\Factories\TransactionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+#[ScopedBy([UserScope::class])]
 #[Fillable(['user_id', 'wallet_id', 'transaction_category_id', 'amount', 'name', 'note', 'photo_path'])]
 class Transaction extends Model
 {

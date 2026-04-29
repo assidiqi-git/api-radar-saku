@@ -28,8 +28,11 @@ it('transaction category belongs to a user', function () {
 });
 
 it('transaction category belongs to a transaction type', function () {
-    $type = TransactionType::factory()->create();
-    $category = TransactionCategory::factory()->for($type)->create();
+    $user = User::factory()->create();
+    $type = TransactionType::factory()->for($user)->create();
+    $category = TransactionCategory::factory()->for($user)->for($type)->create();
+
+    $this->actingAs($user);
 
     expect($category->transactionType)->toBeInstanceOf(TransactionType::class)
         ->and($category->transactionType->id)->toBe($type->id);

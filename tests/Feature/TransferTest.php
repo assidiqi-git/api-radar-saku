@@ -29,16 +29,22 @@ it('transfer belongs to a user', function () {
 });
 
 it('transfer has a fromWallet relation', function () {
-    $fromWallet = Wallet::factory()->create();
-    $transfer = Transfer::factory()->create(['from_wallet_id' => $fromWallet->id]);
+    $user = User::factory()->create();
+    $fromWallet = Wallet::factory()->for($user)->create();
+    $transfer = Transfer::factory()->for($user)->create(['from_wallet_id' => $fromWallet->id]);
+
+    $this->actingAs($user);
 
     expect($transfer->fromWallet)->toBeInstanceOf(Wallet::class)
         ->and($transfer->fromWallet->id)->toBe($fromWallet->id);
 });
 
 it('transfer has a toWallet relation', function () {
-    $toWallet = Wallet::factory()->create();
-    $transfer = Transfer::factory()->create(['to_wallet_id' => $toWallet->id]);
+    $user = User::factory()->create();
+    $toWallet = Wallet::factory()->for($user)->create();
+    $transfer = Transfer::factory()->for($user)->create(['to_wallet_id' => $toWallet->id]);
+
+    $this->actingAs($user);
 
     expect($transfer->toWallet)->toBeInstanceOf(Wallet::class)
         ->and($transfer->toWallet->id)->toBe($toWallet->id);

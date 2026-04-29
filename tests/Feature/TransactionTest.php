@@ -30,16 +30,22 @@ it('transaction belongs to a user', function () {
 });
 
 it('transaction belongs to a wallet', function () {
-    $wallet = Wallet::factory()->create();
-    $transaction = Transaction::factory()->for($wallet)->create();
+    $user = User::factory()->create();
+    $wallet = Wallet::factory()->for($user)->create();
+    $transaction = Transaction::factory()->for($user)->for($wallet)->create();
+
+    $this->actingAs($user);
 
     expect($transaction->wallet)->toBeInstanceOf(Wallet::class)
         ->and($transaction->wallet->id)->toBe($wallet->id);
 });
 
 it('transaction belongs to a transaction category', function () {
-    $category = TransactionCategory::factory()->create();
-    $transaction = Transaction::factory()->for($category)->create();
+    $user = User::factory()->create();
+    $category = TransactionCategory::factory()->for($user)->create();
+    $transaction = Transaction::factory()->for($user)->for($category)->create();
+
+    $this->actingAs($user);
 
     expect($transaction->transactionCategory)->toBeInstanceOf(TransactionCategory::class)
         ->and($transaction->transactionCategory->id)->toBe($category->id);
