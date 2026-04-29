@@ -3,6 +3,7 @@
 use App\Models\TransactionCategory;
 use App\Models\TransactionType;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -47,11 +48,14 @@ it('transaction category is deleted when user is deleted (cascade)', function ()
     expect(TransactionCategory::where('user_id', $user->id)->count())->toBe(0);
 });
 
-it('transaction category is deleted when transaction type is deleted (cascade)', function () {
+it('cannot delete a transaction type that has associated categories (restrict on delete)', function () {
     $type = TransactionType::factory()->create();
     TransactionCategory::factory()->for($type)->count(2)->create();
 
-    $type->delete();
+    // FK is now RESTRICT — deleting a type with categories must throw a QueryException
+    expect(fn () => $type->delete())
+        ->toThrow(QueryException::class);
 
-    expect(TransactionCategory::where('transaction_type_id', $type->id)->count())->toBe(0);
+    // Categories must still exist
+    expect(TransactionCategory::withoutGlobalScopes()->where('transaction_type_id', $type->id)->count())->toBe(2);
 });

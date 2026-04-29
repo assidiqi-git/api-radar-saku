@@ -66,12 +66,20 @@ class TransactionTypeController extends Controller
     /**
      * Delete a transaction type.
      *
-     * Permanently deletes a transaction type and all its associated categories (cascade).
+     * Permanently deletes a transaction type.
+     * Returns 409 Conflict if any categories are still associated with this type.
      *
      * @response 204
+     * @response 409 {"message": "Cannot delete because it has associated records."}
      */
     public function destroy(TransactionType $transactionType): JsonResponse
     {
+        if ($transactionType->transactionCategories()->exists()) {
+            return response()->json([
+                'message' => 'Cannot delete because it has associated records.',
+            ], 409);
+        }
+
         $transactionType->delete();
 
         return response()->json(null, 204);

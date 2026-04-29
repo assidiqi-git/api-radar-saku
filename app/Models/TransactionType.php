@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TransactionAction;
 use App\Models\Scopes\UserScope;
 use Database\Factories\TransactionTypeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -12,11 +13,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[ScopedBy([UserScope::class])]
-#[Fillable(['user_id', 'name', 'description'])]
+#[Fillable(['user_id', 'name', 'action', 'description'])]
 class TransactionType extends Model
 {
     /** @use HasFactory<TransactionTypeFactory> */
     use HasFactory;
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'action' => TransactionAction::class,
+        ];
+    }
 
     public function user(): BelongsTo
     {

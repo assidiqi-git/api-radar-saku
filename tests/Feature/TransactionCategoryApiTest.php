@@ -1,8 +1,10 @@
 <?php
 
+use App\Models\Transaction;
 use App\Models\TransactionCategory;
 use App\Models\TransactionType;
 use App\Models\User;
+use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 
@@ -160,6 +162,35 @@ it('deletes a transaction category', function () {
     $this->deleteJson("/api/transaction-categories/{$category->id}")->assertStatus(204);
 
     $this->assertDatabaseMissing('transaction_categories', ['id' => $category->id]);
+});
+
+it('returns 409 when deleting a category that has associated transactions', function () {
+    $user = Sanctum::actingAs(User::factory()->create());
+    $type = TransactionType::withoutGlobalScopes()->where('user_id', $user->id)->first();
+    $category = TransactionCategory::withoutGlobalScopes()->create([
+        'user_id' => $user->id,
+        'transaction_type_id' => $type->id,
+        'name' => 'With Transactions',
+        'description' => null,
+    ]);
+
+    // Create a transaction linked to this category
+    Transaction::withoutGlobalScopes()->create([
+        'user_id' => $user->id,
+        'wallet_id' => Wallet::withoutGlobalScopes()->where('user_id', $user->id)->first()->id,
+        'transaction_category_id' => $category->id,
+        'amount' => 50000,
+        'name' => 'Linked Transaction',
+        'note' => null,
+        'photo_path' => null,
+    ]);
+
+    $this->deleteJson("/api/transaction-categories/{$category->id}")
+        ->assertStatus(409)
+        ->assertJsonFragment(['message' => 'Cannot delete because it has associated records.']);
+
+    // Category still exists
+    $this->assertDatabaseHas('transaction_categories', ['id' => $category->id]);
 });
 
 it('returns 404 when deleting a category belonging to another user', function () {

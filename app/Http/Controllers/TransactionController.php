@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TransactionAction;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Resources\TransactionResource;
 use App\Models\Transaction;
@@ -70,12 +71,14 @@ class TransactionController extends Controller
                 ->where('user_id', $request->user()->id)
                 ->firstOrFail();
 
-            $typeName = $category->transactionType?->name;
+            $action = $category->transactionType?->action;
             $amount = $request->validated('amount');
 
-            $newBalance = $typeName === 'income'
-                ? $wallet->balance + $amount
-                : $wallet->balance - $amount;
+            $newBalance = match ($action) {
+                TransactionAction::Addition => $wallet->balance + $amount,
+                TransactionAction::Deduction => $wallet->balance - $amount,
+                default => $wallet->balance, // neutral: no change
+            };
 
             $transaction = Transaction::create([
                 'user_id' => $request->user()->id,

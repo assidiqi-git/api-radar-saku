@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TransactionAction;
 use App\Models\TransactionCategory;
 use App\Models\TransactionType;
 use App\Models\User;
@@ -64,7 +65,7 @@ it('lists transactions for the authenticated user', function () {
 
 // ─── Store — balance logic ────────────────────────────────────────────────────
 
-it('increases wallet balance when transaction type is income', function () {
+it('increases wallet balance when transaction type action is addition', function () {
     ['user' => $user, 'category' => $category, 'wallet' => $wallet] = makeUserWithCategory('income');
     Sanctum::actingAs($user);
 
@@ -80,7 +81,7 @@ it('increases wallet balance when transaction type is income', function () {
     expect((float) $wallet->fresh()->balance)->toBe($initialBalance + 500000);
 });
 
-it('decreases wallet balance when transaction type is outcome', function () {
+it('decreases wallet balance when transaction type action is deduction (outcome)', function () {
     ['user' => $user, 'category' => $category, 'wallet' => $wallet] = makeUserWithCategory('outcome');
     Sanctum::actingAs($user);
 
@@ -96,7 +97,7 @@ it('decreases wallet balance when transaction type is outcome', function () {
     expect((float) $wallet->fresh()->balance)->toBe($initialBalance - 200000);
 });
 
-it('decreases wallet balance when transaction type is saving', function () {
+it('decreases wallet balance when transaction type action is deduction (saving)', function () {
     ['user' => $user, 'category' => $category, 'wallet' => $wallet] = makeUserWithCategory('saving');
     Sanctum::actingAs($user);
 
@@ -110,6 +111,39 @@ it('decreases wallet balance when transaction type is saving', function () {
     ])->assertStatus(201);
 
     expect((float) $wallet->fresh()->balance)->toBe($initialBalance - 300000);
+});
+
+it('does not change wallet balance when transaction type action is neutral', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    // Create a custom type with neutral action
+    $neutralType = TransactionType::withoutGlobalScopes()->create([
+        'user_id' => $user->id,
+        'name' => 'adjustment',
+        'action' => TransactionAction::Neutral,
+        'description' => null,
+    ]);
+    $category = TransactionCategory::withoutGlobalScopes()->create([
+        'user_id' => $user->id,
+        'transaction_type_id' => $neutralType->id,
+        'name' => 'Adjustment Category',
+        'description' => null,
+    ]);
+    $wallet = Wallet::withoutGlobalScopes()->where('user_id', $user->id)->first();
+    $wallet->update(['balance' => 1000000]);
+
+    $initialBalance = (float) $wallet->balance;
+
+    $this->postJson('/api/transactions', [
+        'wallet_id' => $wallet->id,
+        'transaction_category_id' => $category->id,
+        'amount' => 500000,
+        'name' => 'Neutral Adjustment',
+    ])->assertStatus(201);
+
+    // Balance must remain unchanged
+    expect((float) $wallet->fresh()->balance)->toBe($initialBalance);
 });
 
 // ─── Store — photo upload ─────────────────────────────────────────────────────

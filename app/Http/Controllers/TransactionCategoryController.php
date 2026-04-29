@@ -76,11 +76,19 @@ class TransactionCategoryController extends Controller
      * Delete a transaction category.
      *
      * Permanently deletes a transaction category.
+     * Returns 409 Conflict if any transactions are still associated with this category.
      *
      * @response 204
+     * @response 409 {"message": "Cannot delete because it has associated records."}
      */
     public function destroy(TransactionCategory $transactionCategory): JsonResponse
     {
+        if ($transactionCategory->transactions()->exists()) {
+            return response()->json([
+                'message' => 'Cannot delete because it has associated records.',
+            ], 409);
+        }
+
         $transactionCategory->delete();
 
         return response()->json(null, 204);

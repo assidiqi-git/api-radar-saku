@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\TransactionAction;
 use App\Models\TransactionType;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -21,6 +22,7 @@ class TransactionTypeFactory extends Factory
         return [
             'user_id' => User::factory(),
             'name' => fake()->randomElement(['income', 'outcome', 'saving']),
+            'action' => TransactionAction::Neutral,
             'description' => fake()->optional()->sentence(),
         ];
     }
