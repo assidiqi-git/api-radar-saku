@@ -130,3 +130,56 @@ it('rejects logout without a token', function () {
     $this->postJson('/api/logout')
         ->assertStatus(401);
 });
+
+it('sets an httponly auth cookie on register', function () {
+    $response = $this->postJson('/api/register', [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ]);
+
+    $response->assertStatus(201);
+
+    $cookie = $response->getCookie('auth_token', decrypt: false);
+
+    expect($cookie)->not->toBeNull()
+        ->and($cookie->isHttpOnly())->toBeTrue()
+        ->and($cookie->getValue())->not->toBeEmpty();
+});
+
+it('sets an httponly auth cookie on login', function () {
+    User::factory()->create([
+        'email' => 'test@example.com',
+        'password' => bcrypt('password'),
+    ]);
+
+    $response = $this->postJson('/api/login', [
+        'email' => 'test@example.com',
+        'password' => 'password',
+    ]);
+
+    $response->assertStatus(200);
+
+    $cookie = $response->getCookie('auth_token', decrypt: false);
+
+    expect($cookie)->not->toBeNull()
+        ->and($cookie->isHttpOnly())->toBeTrue()
+        ->and($cookie->getValue())->not->toBeEmpty();
+});
+
+it('clears the auth cookie on logout', function () {
+    $user = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    $response = $this->withToken($token)
+        ->postJson('/api/logout');
+
+    $response->assertStatus(200);
+
+    $cookie = $response->getCookie('auth_token', decrypt: false);
+
+    // Cookie should be expired (max-age = 0 or expiry in the past)
+    expect($cookie)->not->toBeNull()
+        ->and($cookie->getExpiresTime())->toBeLessThanOrEqual(time());
+});
