@@ -7,7 +7,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('registers a new user and returns a token', function () {
+// -------------------------------------------------------------------------
+// Register
+// -------------------------------------------------------------------------
+
+it('registers a new user (mobile) and returns a token', function () {
     $response = $this->postJson('/api/register', [
         'name' => 'Test User',
         'email' => 'test@example.com',
@@ -17,6 +21,19 @@ it('registers a new user and returns a token', function () {
 
     $response->assertStatus(201)
         ->assertJsonStructure(['token', 'user']);
+});
+
+it('registers a new user (web) and returns user data without a token', function () {
+    $response = $this->postJson('/api/register', [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ], ['X-Client-Type' => 'web']);
+
+    $response->assertStatus(201)
+        ->assertJsonStructure(['user'])
+        ->assertJsonMissing(['token' => '']);
 });
 
 it('seeds 3 default transaction types when a user registers', function () {
@@ -82,7 +99,11 @@ it('fails registration with duplicate email', function () {
         ->assertJsonValidationErrors(['email']);
 });
 
-it('logs in with valid credentials and returns a token', function () {
+// -------------------------------------------------------------------------
+// Login
+// -------------------------------------------------------------------------
+
+it('logs in with valid credentials (mobile) and returns a token', function () {
     User::factory()->create([
         'email' => 'test@example.com',
         'password' => bcrypt('password'),
@@ -95,6 +116,20 @@ it('logs in with valid credentials and returns a token', function () {
 
     $response->assertStatus(200)
         ->assertJsonStructure(['token', 'user']);
+});
+
+it('logs in with valid credentials (web) and returns 204 without a token', function () {
+    User::factory()->create([
+        'email' => 'test@example.com',
+        'password' => bcrypt('password'),
+    ]);
+
+    $response = $this->postJson('/api/login', [
+        'email' => 'test@example.com',
+        'password' => 'password',
+    ], ['X-Client-Type' => 'web']);
+
+    $response->assertStatus(204);
 });
 
 it('rejects login with wrong credentials', function () {
@@ -112,7 +147,11 @@ it('rejects login with wrong credentials', function () {
         ->assertJsonFragment(['message' => 'The provided credentials are incorrect.']);
 });
 
-it('logs out and revokes the token', function () {
+// -------------------------------------------------------------------------
+// Logout
+// -------------------------------------------------------------------------
+
+it('logs out (mobile) and revokes the token', function () {
     $user = User::factory()->create();
     $token = $user->createToken('test')->plainTextToken;
 
@@ -126,60 +165,45 @@ it('logs out and revokes the token', function () {
     expect($user->fresh()->tokens()->count())->toBe(0);
 });
 
+it('logs out (web) and invalidates the session', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)
+        ->postJson('/api/logout', [], ['X-Client-Type' => 'web']);
+
+    $response->assertStatus(200)
+        ->assertJsonFragment(['message' => 'Successfully logged out.']);
+});
+
 it('rejects logout without a token', function () {
     $this->postJson('/api/logout')
         ->assertStatus(401);
 });
 
-it('sets an httponly auth cookie on register', function () {
-    $response = $this->postJson('/api/register', [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-    ]);
+// -------------------------------------------------------------------------
+// GET /user
+// -------------------------------------------------------------------------
 
-    $response->assertStatus(201);
-
-    $cookie = $response->getCookie('auth_token', decrypt: false);
-
-    expect($cookie)->not->toBeNull()
-        ->and($cookie->isHttpOnly())->toBeTrue()
-        ->and($cookie->getValue())->not->toBeEmpty();
-});
-
-it('sets an httponly auth cookie on login', function () {
-    User::factory()->create([
-        'email' => 'test@example.com',
-        'password' => bcrypt('password'),
-    ]);
-
-    $response = $this->postJson('/api/login', [
-        'email' => 'test@example.com',
-        'password' => 'password',
-    ]);
-
-    $response->assertStatus(200);
-
-    $cookie = $response->getCookie('auth_token', decrypt: false);
-
-    expect($cookie)->not->toBeNull()
-        ->and($cookie->isHttpOnly())->toBeTrue()
-        ->and($cookie->getValue())->not->toBeEmpty();
-});
-
-it('clears the auth cookie on logout', function () {
+it('returns the authenticated user via Bearer token (mobile)', function () {
     $user = User::factory()->create();
     $token = $user->createToken('test')->plainTextToken;
 
-    $response = $this->withToken($token)
-        ->postJson('/api/logout');
+    $this->withToken($token)
+        ->getJson('/api/user')
+        ->assertStatus(200)
+        ->assertJsonFragment(['email' => $user->email]);
+});
 
-    $response->assertStatus(200);
+it('returns the authenticated user via session cookie (web)', function () {
+    $user = User::factory()->create();
 
-    $cookie = $response->getCookie('auth_token', decrypt: false);
+    $this->actingAs($user)
+        ->getJson('/api/user')
+        ->assertStatus(200)
+        ->assertJsonFragment(['email' => $user->email]);
+});
 
-    // Cookie should be expired (max-age = 0 or expiry in the past)
-    expect($cookie)->not->toBeNull()
-        ->and($cookie->getExpiresTime())->toBeLessThanOrEqual(time());
+it('rejects GET /user when unauthenticated', function () {
+    $this->getJson('/api/user')
+        ->assertStatus(401);
 });
