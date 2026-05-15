@@ -10,7 +10,6 @@ use App\Models\TransactionCategory;
 use App\Models\Wallet;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
 class SyncController extends Controller
@@ -141,10 +140,10 @@ class SyncController extends Controller
             }
         });
 
-        return response()->json([
+        return $this->successResponse([
             'synced' => $synced,
             'skipped' => $skipped,
-        ]);
+        ], 'Sync completed.');
     }
 
     /**
@@ -166,7 +165,7 @@ class SyncController extends Controller
      * @response 200 TransactionResource[]
      * @response 401 Unauthenticated
      */
-    public function pullTransactions(Request $request): AnonymousResourceCollection
+    public function pullTransactions(Request $request): JsonResponse
     {
         $query = Transaction::withoutGlobalScopes()
             ->withTrashed()
@@ -178,7 +177,10 @@ class SyncController extends Controller
             $query->where('updated_at', '>=', $request->query('last_synced_at'));
         }
 
-        return TransactionResource::collection($query->get());
+        return $this->successResponse(
+            TransactionResource::collection($query->get()),
+            'Pull sync completed.',
+        );
     }
 
     /**

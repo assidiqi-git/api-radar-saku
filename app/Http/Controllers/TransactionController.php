@@ -10,7 +10,6 @@ use App\Models\TransactionCategory;
 use App\Models\Wallet;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -22,13 +21,13 @@ class TransactionController extends Controller
      * Returns a paginated list of all transactions belonging to the authenticated user,
      * with wallet and category (including transaction type) included.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request): JsonResponse
     {
         $transactions = Transaction::with(['wallet', 'transactionCategory.transactionType'])
             ->latest()
             ->paginate(15);
 
-        return TransactionResource::collection($transactions);
+        return $this->paginatedResponse($transactions, TransactionResource::class);
     }
 
     /**
@@ -97,7 +96,11 @@ class TransactionController extends Controller
 
         $transaction->load(['wallet', 'transactionCategory.transactionType']);
 
-        return (new TransactionResource($transaction))->response()->setStatusCode(201);
+        return $this->successResponse(
+            new TransactionResource($transaction),
+            'Transaction created successfully.',
+            201,
+        );
     }
 
     /**
@@ -106,11 +109,11 @@ class TransactionController extends Controller
      * Returns a specific transaction with wallet and category details.
      * Returns 404 if it does not belong to the authenticated user.
      */
-    public function show(Transaction $transaction): TransactionResource
+    public function show(Transaction $transaction): JsonResponse
     {
         $transaction->load(['wallet', 'transactionCategory.transactionType']);
 
-        return new TransactionResource($transaction);
+        return $this->successResponse(new TransactionResource($transaction));
     }
 
     /**

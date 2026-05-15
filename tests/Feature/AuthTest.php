@@ -20,7 +20,7 @@ it('registers a new user (mobile) and returns a token', function () {
     ]);
 
     $response->assertStatus(201)
-        ->assertJsonStructure(['token', 'user']);
+        ->assertJsonStructure(['success', 'message', 'data' => ['token', 'user']]);
 });
 
 it('registers a new user (web) and returns user data without a token', function () {
@@ -32,7 +32,7 @@ it('registers a new user (web) and returns user data without a token', function 
     ], ['X-Client-Type' => 'web']);
 
     $response->assertStatus(201)
-        ->assertJsonStructure(['user'])
+        ->assertJsonStructure(['success', 'message', 'data' => ['user']])
         ->assertJsonMissing(['token' => '']);
 });
 
@@ -115,7 +115,7 @@ it('logs in with valid credentials (mobile) and returns a token', function () {
     ]);
 
     $response->assertStatus(200)
-        ->assertJsonStructure(['token', 'user']);
+        ->assertJsonStructure(['success', 'message', 'data' => ['token', 'user']]);
 });
 
 it('logs in with valid credentials (web) and returns 204 without a token', function () {
@@ -144,6 +144,7 @@ it('rejects login with wrong credentials', function () {
     ]);
 
     $response->assertStatus(422)
+        ->assertJsonPath('success', false)
         ->assertJsonFragment(['message' => 'The provided credentials are incorrect.']);
 });
 
@@ -159,6 +160,7 @@ it('logs out (mobile) and revokes the token', function () {
         ->postJson('/api/logout');
 
     $response->assertStatus(200)
+        ->assertJsonPath('success', true)
         ->assertJsonFragment(['message' => 'Successfully logged out.']);
 
     // Token should be revoked — no tokens remain in DB
@@ -172,6 +174,7 @@ it('logs out (web) and invalidates the session', function () {
         ->postJson('/api/logout', [], ['X-Client-Type' => 'web']);
 
     $response->assertStatus(200)
+        ->assertJsonPath('success', true)
         ->assertJsonFragment(['message' => 'Successfully logged out.']);
 });
 

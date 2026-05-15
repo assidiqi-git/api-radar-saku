@@ -8,7 +8,6 @@ use App\Http\Resources\WalletResource;
 use App\Models\Wallet;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class WalletController extends Controller
 {
@@ -17,11 +16,11 @@ class WalletController extends Controller
      *
      * Returns a paginated list of all wallets belonging to the authenticated user.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request): JsonResponse
     {
         $wallets = Wallet::latest()->paginate(15);
 
-        return WalletResource::collection($wallets);
+        return $this->paginatedResponse($wallets, WalletResource::class);
     }
 
     /**
@@ -39,7 +38,11 @@ class WalletController extends Controller
             'balance' => $request->validated('balance', 0),
         ]);
 
-        return (new WalletResource($wallet))->response()->setStatusCode(201);
+        return $this->successResponse(
+            new WalletResource($wallet),
+            'Wallet created successfully.',
+            201,
+        );
     }
 
     /**
@@ -47,9 +50,9 @@ class WalletController extends Controller
      *
      * Returns details of a specific wallet. Returns 404 if it does not belong to the authenticated user.
      */
-    public function show(Wallet $wallet): WalletResource
+    public function show(Wallet $wallet): JsonResponse
     {
-        return new WalletResource($wallet);
+        return $this->successResponse(new WalletResource($wallet));
     }
 
     /**
@@ -57,11 +60,14 @@ class WalletController extends Controller
      *
      * Partially updates wallet fields. All fields are optional (PATCH semantics).
      */
-    public function update(UpdateWalletRequest $request, Wallet $wallet): WalletResource
+    public function update(UpdateWalletRequest $request, Wallet $wallet): JsonResponse
     {
         $wallet->update($request->validated());
 
-        return new WalletResource($wallet);
+        return $this->successResponse(
+            new WalletResource($wallet),
+            'Wallet updated successfully.',
+        );
     }
 
     /**

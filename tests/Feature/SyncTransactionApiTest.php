@@ -71,7 +71,7 @@ it('inserts new transactions and mutates wallet balance (addition/income)', func
                 'deleted_at' => null,
             ],
         ],
-    ])->assertOk()->assertJson(['synced' => 1, 'skipped' => 0]);
+    ])->assertOk()->assertJson(['success' => true, 'data' => ['synced' => 1, 'skipped' => 0]]);
 
     expect((float) $wallet->fresh()->balance)->toBe($initialBalance + 200_000);
     $this->assertDatabaseHas('transactions', ['id' => $ulid, 'name' => 'Gaji']);
@@ -97,7 +97,7 @@ it('inserts new transactions and decreases wallet balance (deduction/outcome)', 
                 'deleted_at' => null,
             ],
         ],
-    ])->assertOk()->assertJson(['synced' => 1, 'skipped' => 0]);
+    ])->assertOk()->assertJson(['success' => true, 'data' => ['synced' => 1, 'skipped' => 0]]);
 
     expect((float) $wallet->fresh()->balance)->toBe($initialBalance - 50_000);
 });
@@ -128,11 +128,11 @@ it('is idempotent — sending the same batch twice does not double-charge the wa
 
     // First sync
     $this->postJson('/api/sync/transactions', $payload)
-        ->assertOk()->assertJson(['synced' => 1, 'skipped' => 0]);
+        ->assertOk()->assertJson(['success' => true, 'data' => ['synced' => 1, 'skipped' => 0]]);
 
     // Second sync — must be skipped
     $this->postJson('/api/sync/transactions', $payload)
-        ->assertOk()->assertJson(['synced' => 0, 'skipped' => 1]);
+        ->assertOk()->assertJson(['success' => true, 'data' => ['synced' => 0, 'skipped' => 1]]);
 
     // Balance must only change once
     expect((float) $wallet->fresh()->balance)->toBe($initialBalance + 100_000);
@@ -176,7 +176,7 @@ it('applies only the balance delta when an existing transaction amount is update
             'created_at' => now()->toIso8601String(),
             'deleted_at' => null,
         ]],
-    ])->assertOk()->assertJson(['synced' => 1, 'skipped' => 0]);
+    ])->assertOk()->assertJson(['success' => true, 'data' => ['synced' => 1, 'skipped' => 0]]);
 
     // Balance should only reflect the new total deduction, not cumulative
     expect((float) $wallet->fresh()->balance)->toBe($initialBalance - 150_000);
@@ -220,7 +220,7 @@ it('soft deletes an existing transaction and reverses wallet balance when delete
             'created_at' => now()->toIso8601String(),
             'deleted_at' => now()->toIso8601String(),
         ]],
-    ])->assertOk()->assertJson(['synced' => 1, 'skipped' => 0]);
+    ])->assertOk()->assertJson(['success' => true, 'data' => ['synced' => 1, 'skipped' => 0]]);
 
     // Balance must be reversed
     expect((float) $wallet->fresh()->balance)->toBe($initialBalance);
@@ -259,7 +259,7 @@ it('is idempotent when soft-deleting an already-deleted transaction', function (
             'created_at' => now()->toIso8601String(),
             'deleted_at' => now()->toIso8601String(),
         ]],
-    ])->assertOk()->assertJson(['synced' => 1, 'skipped' => 0]);
+    ])->assertOk()->assertJson(['success' => true, 'data' => ['synced' => 1, 'skipped' => 0]]);
 
     // Send deleted_at again — must be skipped
     $this->postJson('/api/sync/transactions', [
@@ -273,7 +273,7 @@ it('is idempotent when soft-deleting an already-deleted transaction', function (
             'created_at' => now()->toIso8601String(),
             'deleted_at' => now()->toIso8601String(),
         ]],
-    ])->assertOk()->assertJson(['synced' => 0, 'skipped' => 1]);
+    ])->assertOk()->assertJson(['success' => true, 'data' => ['synced' => 0, 'skipped' => 1]]);
 
     // Balance stays at initial (reversed only once)
     expect((float) $wallet->fresh()->balance)->toBe($initialBalance);
@@ -297,7 +297,7 @@ it('creates transaction as new and immediately soft-deletes when deleted_at prov
             'created_at' => now()->toIso8601String(),
             'deleted_at' => now()->toIso8601String(),
         ]],
-    ])->assertOk()->assertJson(['synced' => 1, 'skipped' => 0]);
+    ])->assertOk()->assertJson(['success' => true, 'data' => ['synced' => 1, 'skipped' => 0]]);
 
     // Balance should be unaffected (deducted then re-added)
     expect((float) $wallet->fresh()->balance)->toBe($initialBalance);
@@ -423,7 +423,7 @@ it('handles a mixed batch of new and already-synced transactions correctly', fun
                 'deleted_at' => null,
             ],
         ],
-    ])->assertOk()->assertJson(['synced' => 1, 'skipped' => 1]);
+    ])->assertOk()->assertJson(['success' => true, 'data' => ['synced' => 1, 'skipped' => 1]]);
 
     // Only the new transaction's amount should be added
     expect((float) $wallet->fresh()->balance)->toBe($balanceAfterFirst + 50_000);

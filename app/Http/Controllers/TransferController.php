@@ -8,7 +8,6 @@ use App\Models\Transfer;
 use App\Models\Wallet;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
 class TransferController extends Controller
@@ -19,13 +18,13 @@ class TransferController extends Controller
      * Returns a paginated list of all fund transfers belonging to the authenticated user,
      * with source and destination wallet details included.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request): JsonResponse
     {
         $transfers = Transfer::with(['fromWallet', 'toWallet'])
             ->latest()
             ->paginate(15);
 
-        return TransferResource::collection($transfers);
+        return $this->paginatedResponse($transfers, TransferResource::class);
     }
 
     /**
@@ -41,7 +40,7 @@ class TransferController extends Controller
      * Returns 422 if `from_wallet` does not have sufficient balance to cover `amount + fee`.
      *
      * @response 201 TransferResource
-     * @response 422 {"message": "Insufficient balance.", "errors": {"from_wallet_id": ["string"]}}
+     * @response 422 {\"message\": \"Insufficient balance.\", \"errors\": {\"from_wallet_id\": [\"string\"]}}
      */
     public function store(StoreTransferRequest $request): JsonResponse
     {
@@ -55,12 +54,11 @@ class TransferController extends Controller
         $totalDeduction = $amount + $fee;
 
         if ($fromWallet->balance < $totalDeduction) {
-            return response()->json([
-                'message' => 'Insufficient balance.',
-                'errors' => [
-                    'from_wallet_id' => ['The wallet does not have sufficient balance for this transfer.'],
-                ],
-            ], 422);
+            return $this->errorResponse(
+                'Insufficient balance.',
+                ['from_wallet_id' => ['The wallet does not have sufficient balance for this transfer.']],
+                422,
+            );
         }
 
         $transfer = DB::transaction(function () use ($request, $amount, $fee, $totalDeduction) {
@@ -94,7 +92,11 @@ class TransferController extends Controller
 
         $transfer->load(['fromWallet', 'toWallet']);
 
-        return (new TransferResource($transfer))->response()->setStatusCode(201);
+        return $this->successResponse(
+            new TransferResource($transfer),
+            'Transfer created successfully.',
+            201,
+        );
     }
 
     /**
@@ -103,11 +105,11 @@ class TransferController extends Controller
      * Returns a specific transfer with source and destination wallet details.
      * Returns 404 if it does not belong to the authenticated user.
      */
-    public function show(Transfer $transfer): TransferResource
+    public function show(Transfer $transfer): JsonResponse
     {
         $transfer->load(['fromWallet', 'toWallet']);
 
-        return new TransferResource($transfer);
+        return $this->successResponse(new TransferResource($transfer));
     }
 
     /**

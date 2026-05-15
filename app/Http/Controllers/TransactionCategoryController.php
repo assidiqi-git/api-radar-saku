@@ -8,7 +8,6 @@ use App\Http\Resources\TransactionCategoryResource;
 use App\Models\TransactionCategory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class TransactionCategoryController extends Controller
 {
@@ -18,11 +17,11 @@ class TransactionCategoryController extends Controller
      * Returns a paginated list of all transaction categories belonging to the authenticated user,
      * with their associated transaction type included.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request): JsonResponse
     {
         $categories = TransactionCategory::with('transactionType')->latest()->paginate(15);
 
-        return TransactionCategoryResource::collection($categories);
+        return $this->paginatedResponse($categories, TransactionCategoryResource::class);
     }
 
     /**
@@ -42,7 +41,11 @@ class TransactionCategoryController extends Controller
 
         $category->load('transactionType');
 
-        return (new TransactionCategoryResource($category))->response()->setStatusCode(201);
+        return $this->successResponse(
+            new TransactionCategoryResource($category),
+            'Transaction category created successfully.',
+            201,
+        );
     }
 
     /**
@@ -51,11 +54,11 @@ class TransactionCategoryController extends Controller
      * Returns a specific category with its transaction type. Returns 404 if it does not belong
      * to the authenticated user.
      */
-    public function show(TransactionCategory $transactionCategory): TransactionCategoryResource
+    public function show(TransactionCategory $transactionCategory): JsonResponse
     {
         $transactionCategory->load('transactionType');
 
-        return new TransactionCategoryResource($transactionCategory);
+        return $this->successResponse(new TransactionCategoryResource($transactionCategory));
     }
 
     /**
@@ -64,12 +67,15 @@ class TransactionCategoryController extends Controller
      * Renames or changes the type of an existing category. All fields are optional.
      * The `transaction_type_id` must belong to the authenticated user.
      */
-    public function update(UpdateTransactionCategoryRequest $request, TransactionCategory $transactionCategory): TransactionCategoryResource
+    public function update(UpdateTransactionCategoryRequest $request, TransactionCategory $transactionCategory): JsonResponse
     {
         $transactionCategory->update($request->validated());
         $transactionCategory->load('transactionType');
 
-        return new TransactionCategoryResource($transactionCategory);
+        return $this->successResponse(
+            new TransactionCategoryResource($transactionCategory),
+            'Transaction category updated successfully.',
+        );
     }
 
     /**
@@ -79,14 +85,15 @@ class TransactionCategoryController extends Controller
      * Returns 409 Conflict if any transactions are still associated with this category.
      *
      * @response 204
-     * @response 409 {"message": "Cannot delete because it has associated records."}
+     * @response 409 {\"message\": \"Cannot delete because it has associated records.\"}
      */
     public function destroy(TransactionCategory $transactionCategory): JsonResponse
     {
         if ($transactionCategory->transactions()->exists()) {
-            return response()->json([
-                'message' => 'Cannot delete because it has associated records.',
-            ], 409);
+            return $this->errorResponse(
+                'Cannot delete because it has associated records.',
+                code: 409,
+            );
         }
 
         $transactionCategory->delete();

@@ -8,7 +8,6 @@ use App\Http\Resources\TransactionTypeResource;
 use App\Models\TransactionType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class TransactionTypeController extends Controller
 {
@@ -17,12 +16,12 @@ class TransactionTypeController extends Controller
      *
      * Returns a paginated list of all transaction types belonging to the authenticated user.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request): JsonResponse
     {
         // sleep(2);
         $types = TransactionType::latest()->paginate(15);
 
-        return TransactionTypeResource::collection($types);
+        return $this->paginatedResponse($types, TransactionTypeResource::class);
     }
 
     /**
@@ -39,7 +38,11 @@ class TransactionTypeController extends Controller
             'user_id' => $request->user()->id,
         ]);
 
-        return (new TransactionTypeResource($type))->response()->setStatusCode(201);
+        return $this->successResponse(
+            new TransactionTypeResource($type),
+            'Transaction type created successfully.',
+            201,
+        );
     }
 
     /**
@@ -47,9 +50,9 @@ class TransactionTypeController extends Controller
      *
      * Returns a specific transaction type. Returns 404 if it does not belong to the authenticated user.
      */
-    public function show(TransactionType $transactionType): TransactionTypeResource
+    public function show(TransactionType $transactionType): JsonResponse
     {
-        return new TransactionTypeResource($transactionType);
+        return $this->successResponse(new TransactionTypeResource($transactionType));
     }
 
     /**
@@ -57,11 +60,14 @@ class TransactionTypeController extends Controller
      *
      * Renames or updates the description of a transaction type. All fields are optional.
      */
-    public function update(UpdateTransactionTypeRequest $request, TransactionType $transactionType): TransactionTypeResource
+    public function update(UpdateTransactionTypeRequest $request, TransactionType $transactionType): JsonResponse
     {
         $transactionType->update($request->validated());
 
-        return new TransactionTypeResource($transactionType);
+        return $this->successResponse(
+            new TransactionTypeResource($transactionType),
+            'Transaction type updated successfully.',
+        );
     }
 
     /**
@@ -71,14 +77,15 @@ class TransactionTypeController extends Controller
      * Returns 409 Conflict if any categories are still associated with this type.
      *
      * @response 204
-     * @response 409 {"message": "Cannot delete because it has associated records."}
+     * @response 409 {\"message\": \"Cannot delete because it has associated records.\"}
      */
     public function destroy(TransactionType $transactionType): JsonResponse
     {
         if ($transactionType->transactionCategories()->exists()) {
-            return response()->json([
-                'message' => 'Cannot delete because it has associated records.',
-            ], 409);
+            return $this->errorResponse(
+                'Cannot delete because it has associated records.',
+                code: 409,
+            );
         }
 
         $transactionType->delete();

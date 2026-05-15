@@ -50,15 +50,15 @@ class AuthController extends Controller
                 $request->session()->regenerate();
             }
 
-            return response()->json(['user' => $user], 201);
+            return $this->successResponse(['user' => $user], 'Registration successful.', 201);
         }
 
         $token = $user->createToken('api-token')->plainTextToken;
 
-        return response()->json([
+        return $this->successResponse([
             'token' => $token,
             'user' => $user,
-        ], 201);
+        ], 'Registration successful.', 201);
     }
 
     /**
@@ -79,9 +79,10 @@ class AuthController extends Controller
     public function login(LoginRequest $request): JsonResponse|Response
     {
         if (! Auth::attempt($request->only('email', 'password'))) {
-            return response()->json([
-                'message' => 'The provided credentials are incorrect.',
-            ], 422);
+            return $this->errorResponse(
+                'The provided credentials are incorrect.',
+                code: 422,
+            );
         }
 
         if ($this->isWebClient($request)) {
@@ -96,10 +97,10 @@ class AuthController extends Controller
         $user = Auth::user();
         $token = $user->createToken('api-token')->plainTextToken;
 
-        return response()->json([
+        return $this->successResponse([
             'token' => $token,
             'user' => $user,
-        ]);
+        ], 'Login successful.');
     }
 
     /**
@@ -122,6 +123,6 @@ class AuthController extends Controller
             $request->user()->currentAccessToken()->delete();
         }
 
-        return response()->json(['message' => 'Successfully logged out.']);
+        return $this->successResponse(null, 'Successfully logged out.');
     }
 }
