@@ -18,7 +18,6 @@ class TransactionTypeController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        // sleep(2);
         $types = TransactionType::latest()->paginate(15);
 
         return $this->paginatedResponse($types, TransactionTypeResource::class);
@@ -29,7 +28,6 @@ class TransactionTypeController extends Controller
      *
      * Creates a new transaction type (e.g. income, outcome, saving) for the authenticated user.
      *
-     * @response 201 TransactionTypeResource
      */
     public function store(StoreTransactionTypeRequest $request): JsonResponse
     {
@@ -76,8 +74,6 @@ class TransactionTypeController extends Controller
      * Permanently deletes a transaction type.
      * Returns 409 Conflict if any categories are still associated with this type.
      *
-     * @response 204
-     * @response 409 {\"message\": \"Cannot delete because it has associated records.\"}
      */
     public function destroy(TransactionType $transactionType): JsonResponse
     {

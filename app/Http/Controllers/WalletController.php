@@ -28,7 +28,6 @@ class WalletController extends Controller
      *
      * Creates a new wallet for the authenticated user.
      *
-     * @response 201 WalletResource
      */
     public function store(StoreWalletRequest $request): JsonResponse
     {
@@ -76,7 +75,6 @@ class WalletController extends Controller
      * Soft-deletes a wallet. The record is retained in the database but hidden from all queries.
      * Returns 404 if it does not belong to the authenticated user.
      *
-     * @response 204
      */
     public function destroy(Wallet $wallet): JsonResponse
     {

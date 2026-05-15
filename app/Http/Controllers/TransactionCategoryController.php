@@ -30,7 +30,6 @@ class TransactionCategoryController extends Controller
      * Creates a new category linked to a transaction type owned by the authenticated user.
      * Providing a `transaction_type_id` that belongs to another user will return a 422 error.
      *
-     * @response 201 TransactionCategoryResource
      */
     public function store(StoreTransactionCategoryRequest $request): JsonResponse
     {
@@ -84,8 +83,6 @@ class TransactionCategoryController extends Controller
      * Permanently deletes a transaction category.
      * Returns 409 Conflict if any transactions are still associated with this category.
      *
-     * @response 204
-     * @response 409 {\"message\": \"Cannot delete because it has associated records.\"}
      */
     public function destroy(TransactionCategory $transactionCategory): JsonResponse
     {

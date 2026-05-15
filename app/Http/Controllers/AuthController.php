@@ -32,9 +32,6 @@ class AuthController extends Controller
      * - Mobile clients: returns 201 with user data and a plaintext Bearer token.
      *
      * @unauthenticated
-     *
-     * @response 201 {"user": {"id": "string", "name": "string", "email": "string"}}
-     * @response 201 {"token": "string", "user": {"id": "string", "name": "string", "email": "string"}}
      */
     public function register(RegisterRequest $request): JsonResponse
     {
@@ -71,10 +68,6 @@ class AuthController extends Controller
      * - Mobile clients: returns user data and a plaintext Bearer token.
      *
      * @unauthenticated
-     *
-     * @response 204
-     * @response {"token": "string", "user": {"id": "string", "name": "string", "email": "string"}}
-     * @response 422 {"message": "The provided credentials are incorrect."}
      */
     public function login(LoginRequest $request): JsonResponse|Response
     {
@@ -109,7 +102,6 @@ class AuthController extends Controller
      * - Web clients (X-Client-Type: web): invalidates the session.
      * - Mobile clients: revokes the current Bearer token.
      *
-     * @response 200 {"message": "Successfully logged out."}
      */
     public function logout(Request $request): JsonResponse
     {

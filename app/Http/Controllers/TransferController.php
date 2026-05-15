@@ -39,8 +39,6 @@ class TransferController extends Controller
      *
      * Returns 422 if `from_wallet` does not have sufficient balance to cover `amount + fee`.
      *
-     * @response 201 TransferResource
-     * @response 422 {\"message\": \"Insufficient balance.\", \"errors\": {\"from_wallet_id\": [\"string\"]}}
      */
     public function store(StoreTransferRequest $request): JsonResponse
     {
@@ -121,7 +119,6 @@ class TransferController extends Controller
      *
      * Both wallet updates and the soft delete are wrapped in a `DB::transaction()`.
      *
-     * @response 204
      */
     public function destroy(Transfer $transfer): JsonResponse
     {

@@ -52,9 +52,7 @@ class SyncController extends Controller
      * - `deleted_at` provided → soft-delete and reverse previous balance mutation.
      *   Sending `deleted_at` again for an already-deleted record is a no-op.
      *
-     * @response 200 {"synced": 3, "skipped": 1}
-     * @response 401 Unauthenticated
-     * @response 422 {"message": "...", "errors": {...}}
+
      */
     public function transactions(SyncTransactionRequest $request): JsonResponse
     {
@@ -162,8 +160,6 @@ class SyncController extends Controller
      *
      * @queryParam last_synced_at string Optional ISO 8601 timestamp. Only records updated at or after this time are returned. Example: 2026-04-29T10:00:00Z
      *
-     * @response 200 TransactionResource[]
-     * @response 401 Unauthenticated
      */
     public function pullTransactions(Request $request): JsonResponse
     {

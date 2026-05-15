@@ -14,7 +14,11 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/user', fn (Request $request) => response()->json($request->user()));
+    Route::get('/user', fn (Request $request) => response()->json([
+        'success' => true,
+        'message' => 'Success',
+        'data' => $request->user(),
+    ]));
 
     Route::post('/logout', [AuthController::class, 'logout']);
 

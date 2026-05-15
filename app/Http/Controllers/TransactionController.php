@@ -45,7 +45,6 @@ class TransactionController extends Controller
      * Both `Transaction::create()` and `wallet->update()` are wrapped in a `DB::transaction()`
      * to guarantee atomicity. If either step fails, both are rolled back.
      *
-     * @response 201 TransactionResource
      */
     public function store(StoreTransactionRequest $request): JsonResponse
     {
@@ -128,7 +127,6 @@ class TransactionController extends Controller
      * - `deduction` transaction → wallet balance is **increased** by `amount`
      * - `neutral` transaction → no balance change
      *
-     * @response 204
      */
     public function destroy(Transaction $transaction): JsonResponse
     {
