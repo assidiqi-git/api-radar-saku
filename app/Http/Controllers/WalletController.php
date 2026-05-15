@@ -31,7 +31,7 @@ class WalletController extends Controller
      *
      * @response 201 WalletResource
      */
-    public function store(StoreWalletRequest $request): WalletResource
+    public function store(StoreWalletRequest $request): JsonResponse
     {
         $wallet = Wallet::create([
             ...$request->validated(),
@@ -39,7 +39,7 @@ class WalletController extends Controller
             'balance' => $request->validated('balance', 0),
         ]);
 
-        return new WalletResource($wallet);
+        return (new WalletResource($wallet))->response()->setStatusCode(201);
     }
 
     /**

@@ -33,7 +33,7 @@ class TransactionCategoryController extends Controller
      *
      * @response 201 TransactionCategoryResource
      */
-    public function store(StoreTransactionCategoryRequest $request): TransactionCategoryResource
+    public function store(StoreTransactionCategoryRequest $request): JsonResponse
     {
         $category = TransactionCategory::create([
             ...$request->validated(),
@@ -42,7 +42,7 @@ class TransactionCategoryController extends Controller
 
         $category->load('transactionType');
 
-        return new TransactionCategoryResource($category);
+        return (new TransactionCategoryResource($category))->response()->setStatusCode(201);
     }
 
     /**

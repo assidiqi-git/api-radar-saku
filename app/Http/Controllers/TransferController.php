@@ -43,7 +43,7 @@ class TransferController extends Controller
      * @response 201 TransferResource
      * @response 422 {"message": "Insufficient balance.", "errors": {"from_wallet_id": ["string"]}}
      */
-    public function store(StoreTransferRequest $request): TransferResource|JsonResponse
+    public function store(StoreTransferRequest $request): JsonResponse
     {
         $fromWallet = Wallet::withoutGlobalScopes()
             ->where('id', $request->validated('from_wallet_id'))
@@ -94,7 +94,7 @@ class TransferController extends Controller
 
         $transfer->load(['fromWallet', 'toWallet']);
 
-        return new TransferResource($transfer);
+        return (new TransferResource($transfer))->response()->setStatusCode(201);
     }
 
     /**

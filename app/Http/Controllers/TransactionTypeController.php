@@ -19,6 +19,7 @@ class TransactionTypeController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
+        // sleep(2);
         $types = TransactionType::latest()->paginate(15);
 
         return TransactionTypeResource::collection($types);
@@ -31,14 +32,14 @@ class TransactionTypeController extends Controller
      *
      * @response 201 TransactionTypeResource
      */
-    public function store(StoreTransactionTypeRequest $request): TransactionTypeResource
+    public function store(StoreTransactionTypeRequest $request): JsonResponse
     {
         $type = TransactionType::create([
             ...$request->validated(),
             'user_id' => $request->user()->id,
         ]);
 
-        return new TransactionTypeResource($type);
+        return (new TransactionTypeResource($type))->response()->setStatusCode(201);
     }
 
     /**

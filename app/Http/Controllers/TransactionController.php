@@ -48,7 +48,7 @@ class TransactionController extends Controller
      *
      * @response 201 TransactionResource
      */
-    public function store(StoreTransactionRequest $request): TransactionResource
+    public function store(StoreTransactionRequest $request): JsonResponse
     {
         $photoPath = null;
 
@@ -97,7 +97,7 @@ class TransactionController extends Controller
 
         $transaction->load(['wallet', 'transactionCategory.transactionType']);
 
-        return new TransactionResource($transaction);
+        return (new TransactionResource($transaction))->response()->setStatusCode(201);
     }
 
     /**
