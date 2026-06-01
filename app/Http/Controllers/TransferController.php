@@ -22,7 +22,7 @@ class TransferController extends Controller
     {
         $transfers = Transfer::with(['fromWallet', 'toWallet'])
             ->latest()
-            ->paginate(15);
+            ->paginate(10);
 
         return $this->paginatedResponse($transfers, TransferResource::class);
     }

@@ -25,7 +25,7 @@ class TransactionController extends Controller
     {
         $transactions = Transaction::with(['wallet', 'transactionCategory.transactionType'])
             ->latest()
-            ->paginate(15);
+            ->paginate(10);
 
         return $this->paginatedResponse($transactions, TransactionResource::class);
     }
@@ -152,7 +152,7 @@ class TransactionController extends Controller
 
             if ($transaction->photo_path) {
                 $filename = basename($transaction->photo_path);
-                $trashedPath = 'transactions/trash/'.$filename;
+                $trashedPath = 'transactions/trash/' . $filename;
                 Storage::disk('public')->move($transaction->photo_path, $trashedPath);
                 $transaction->photo_path = $trashedPath;
             }

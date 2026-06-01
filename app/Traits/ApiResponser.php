@@ -48,11 +48,17 @@ trait ApiResponser
             'success' => true,
             'message' => $message,
             'data' => $resourceClass::collection($paginator->items()),
+            'links' => [
+                'first' => $paginator->onFirstPage(),
+                'last' => $paginator->hasPages() ? $paginator->url($paginator->lastPage()) : null,
+                'prev' => $paginator->onFirstPage() ? null : $paginator->previousPageUrl(),
+                'next' => $paginator->hasMorePages() ? $paginator->nextPageUrl() : null,
+            ],
             'meta' => [
                 'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
                 'per_page' => $paginator->perPage(),
-                'total_items' => $paginator->total(),
-                'total_pages' => $paginator->lastPage(),
+                'total' => $paginator->total(),
             ],
         ]);
     }

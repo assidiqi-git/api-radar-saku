@@ -18,7 +18,7 @@ class WalletController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $wallets = Wallet::latest()->paginate(15);
+        $wallets = Wallet::latest()->paginate(10);
 
         return $this->paginatedResponse($wallets, WalletResource::class);
     }

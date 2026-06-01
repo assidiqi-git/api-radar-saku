@@ -19,7 +19,7 @@ class TransactionCategoryController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $categories = TransactionCategory::with('transactionType')->latest()->paginate(15);
+        $categories = TransactionCategory::with('transactionType')->latest()->paginate(10);
 
         return $this->paginatedResponse($categories, TransactionCategoryResource::class);
     }

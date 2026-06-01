@@ -18,7 +18,7 @@ class TransactionTypeController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $types = TransactionType::latest()->paginate(15);
+        $types = TransactionType::latest()->paginate(10);
 
         return $this->paginatedResponse($types, TransactionTypeResource::class);
     }
